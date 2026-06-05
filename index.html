@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت مالی شخصی</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .main-card {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+            margin-bottom: 20px;
+        }
+        .main-card h2 { font-size: 1.1rem; opacity: 0.9; margin-bottom: 10px; }
+        .main-card .total-amount { font-size: 2.2rem; font-weight: bold; }
+
+        .accounts-slider {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding: 10px 5px 20px 5px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .accounts-slider::-webkit-scrollbar { display: none; }
+
+        .account-card {
+            min-width: 260px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            scroll-snap-align: center;
+            border-right: 4px solid var(--primary);
+            position: relative;
+        }
+        .account-card h3 { font-size: 1rem; color: var(--text-light); margin-bottom: 8px; }
+        .account-card .balance { font-size: 1.5rem; font-weight: bold; color: var(--text); }
+        
+        .delete-acc-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #fee2e2;
+            color: var(--danger);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .delete-acc-btn:hover { background: #fecaca; }
+
+        .add-account-btn {
+            min-width: 100px;
+            background: #e5e7eb;
+            border: 2px dashed #9ca3af;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-light);
+            font-weight: bold;
+            scroll-snap-align: center;
+        }
+
+        .form-section, .history-section, .report-section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text-light); }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 10px;
+            font-size: 1rem; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+        .action-buttons { display: flex; gap: 15px; margin-top: 20px; }
+        .btn {
+            flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 1.1rem;
+            font-weight: bold; cursor: pointer; transition: transform 0.1s, opacity 0.2s; color: white;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-income { background-color: var(--success); }
+        .btn-expense { background-color: var(--danger); }
+        .btn-cancel { background: #9ca3af; margin-top: 10px; width: 100%; }
+
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-excel {
+            background-color: #059669; color: white; padding: 8px 16px; border-radius: 8px;
+            border: none; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;
+        }
+
+        .transaction-list { list-style: none; max-height: 400px; overflow-y: auto; }
+        .transaction-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #f3f4f6;
+        }
+        .transaction-item:last-child { border-bottom: none; }
+        .t-info { display: flex; flex-direction: column; }
+        .t-title { font-weight: bold; font-size: 0.95rem; }
+        .t-meta { font-size: 0.8rem; color: var(--text-light); margin-top: 4px; }
+        .t-amount { font-weight: bold; font-size: 1rem; }
+        .t-amount.income { color: var(--success); }
+        .t-amount.expense { color: var(--danger); }
+
+        .report-month-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e5e7eb;
+        }
+        .report-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #d1d5db;
+            padding-bottom: 8px;
+        }
+        .report-details { display: flex; flex-direction: column; gap: 8px; }
+        .report-item { display: flex; justify-content: space-between; font-size: 0.95rem; }
+        .report-item.income { color: var(--success); }
+        .report-item.expense { color: var(--danger); }
+        .report-item.net { font-weight: bold; border-top: 1px solid #e5e7eb; margin-top: 8px; padding-top: 8px; }
+
+        .custom-cat-input { display: none; margin-top: 10px; }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 16px; width: 100%; max-width: 400px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .account-select-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .account-option {
+            padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer;
+            text-align: center; transition: all 0.2s;
+        }
+        .account-option:hover { background-color: #f9fafb; border-color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div class="main-card">
+        <h2>مجموع دارایی شما</h2>
+        <div class="total-amount" id="totalBalance">0 تومان</div>
+    </div>
+
+    <div class="accounts-slider" id="accountsSlider">
+        <div class="add-account-btn" onclick="openAddAccountModal()">+ حساب جدید</div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-group">
+            <label>عنوان تراکنش</label>
+            <input type="text" id="tTitle" placeholder="مثلا: خرید مواد غذایی">
+        </div>
+        <div class="form-group">
+            <label>مبلغ (تومان)</label>
+            <!-- تغییر نوع به text و اضافه کردن inputmode برای کیبورد عددی در موبایل -->
+            <input type="text" id="tAmount" inputmode="numeric" placeholder="مثلا: 500,000">
+        </div>
+        <div class="form-group">
+            <label>دسته‌بندی</label>
+            <select id="tCategory" onchange="checkCustomCategory(this)">
+                <option value="درآمد">درآمد</option>
+                <option value="خوراک">خوراک</option>
+                <option value="حمل و نقل">حمل و نقل</option>
+                <option value="مسکن">مسکن</option>
+                <option value="سرگرمی">سرگرمی</option>
+                <option value="بهداشت و درمان">بهداشت و درمان</option>
+                <option value="custom">+ افزودن دسته‌بندی دلخواه...</option>
+            </select>
+            <input type="text" id="customCategoryInput" class="custom-cat-input" placeholder="نام دسته‌بندی جدید را وارد کنید">
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-income" onclick="initiateTransaction('income')">ورودی (درآمد)</button>
+            <button class="btn btn-expense" onclick="initiateTransaction('expense')">خروجی (هزینه)</button>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <div class="history-header">
+            <h3>📊 گزارش تفکیکی ماهانه</h3>
+        </div>
+        <div id="monthlyReportList"></div>
+    </div>
+
+    <div class="history-section">
+        <div class="history-header">
+            <h3>📜 تاریخچه تراکنش‌ها</h3>
+            <button class="btn-excel" onclick="exportToExcel()">📥 دریافت گزارش اکسل</button>
+        </div>
+        <ul class="transaction-list" id="transactionList"></ul>
+    </div>
+
+    <div class="modal" id="accountSelectModal">
+        <div class="modal-content">
+            <div class="modal-title">انتخاب حساب مقصد</div>
+            <div class="account-select-list" id="modalAccountList"></div>
+            <button class="btn btn-cancel" onclick="closeModal('accountSelectModal')">انصراف</button>
+        </div>
+    </div>
+
+    <div class="modal" id="addAccountModal">
+        <div class="modal-content">
+            <div class="modal-title">افزودن حساب جدید</div>
+            <div class="form-group">
+                <label>نام حساب (مثلا: بانک سامان، صندوق گردشگری)</label>
+                <input type="text" id="newAccountName" placeholder="نام حساب را وارد کنید">
+            </div>
+            <button class="btn btn-income" onclick="addNewAccount()">ذخیره حساب</button>
+            <button class="btn btn-cancel" onclick="closeModal('addAccountModal')">انصراف</button>
+        </div>
+    </div>
+
+    <script>
+        const defaultData = {
+            accounts: [],
+            transactions: [],
+            categories: ['درآمد', 'خوراک', 'حمل و نقل', 'مسکن', 'سرگرمی', 'بهداشت و درمان']
+        };
+
+        let appData = JSON.parse(localStorage.getItem('financeApp_v3')) || defaultData;
+        let pendingTransaction = null;
+
+        function saveData() {
+            localStorage.setItem('financeApp_v3', JSON.stringify(appData));
+            renderAll();
+        }
+
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
+        }
+
+        function getPersianDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('fa-IR', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function getPersianMonth(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long' });
+        }
+
+        function renderAll() {
+            renderTotalBalance();
+            renderAccountsSlider();
+            renderMonthlyReport();
+            renderTransactionHistory();
+            updateCategoryDropdown();
+        }
+
+        function renderTotalBalance() {
+            const total = appData.accounts.reduce((sum, acc) => sum + acc.balance, 0);
+            document.getElementById('totalBalance').innerText = formatMoney(total);
+        }
+
+        function renderAccountsSlider() {
+            const slider = document.getElementById('accountsSlider');
+            const addBtn = slider.querySelector('.add-account-btn');
+            slider.innerHTML = '';
+            
+            if (appData.accounts.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.style.cssText = "width:100%; text-align:center; color:#6b7280; padding:10px; font-size:0.9rem;";
+                emptyMsg.innerText = "هنوز حسابی اضافه نکرده‌اید.";
+                slider.appendChild(emptyMsg);
+            }
+
+            appData.accounts.forEach(acc => {
+                const card = document.createElement('div');
+                card.className = 'account-card';
+                card.innerHTML = `
+                    <button class="delete-acc-btn" onclick="deleteAccount(${acc.id}, event)" title="حذف حساب">🗑️</button>
+                    <h3>${acc.name}</h3>
+                    <div class="balance">${formatMoney(acc.balance)}</div>
+                `;
+                slider.appendChild(card);
+            });
+            slider.appendChild(addBtn);
+        }
+
+        function deleteAccount(id, event) {
+            event.stopPropagation();
+            const acc = appData.accounts.find(a => a.id === id);
+            if (confirm(`آیا از حذف حساب "${acc.name}" اطمینان دارید؟\nتمام تراکنش‌های مرتبط با این حساب نیز حذف خواهند شد.`)) {
+                appData.accounts = appData.accounts.filter(a => a.id !== id);
+                appData.transactions = appData.transactions.filter(t => t.accountId !== id);
+                saveData();
+            }
+        }
+
+        function updateCategoryDropdown() {
+            const select = document.getElementById('tCategory');
+            select.innerHTML = `
+                <option value="درآمد">درآمد</option>
+                <option value="خوراک">خوراک</option>
+                <option value="حمل و نقل">حمل و نقل</option>
+                <option value="مسکن">مسکن</option>
+                <option value="سرگرمی">سرگرمی</option>
+                <option value="بهداشت و درمان">بهداشت و درمان</option>
+            `;
+            appData.categories.forEach(cat => {
+                if (!['درآمد', 'خوراک', 'حمل و نقل', 'مسکن', 'سرگرمی', 'بهداشت و درمان'].includes(cat)) {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.innerText = cat;
+                    select.appendChild(option);
+                }
+            });
+            const customOption = document.createElement('option');
+            customOption.value = 'custom';
+            customOption.innerText = '+ افزودن دسته‌بندی دلخواه...';
+            select.appendChild(customOption);
+        }
+
+        function renderMonthlyReport() {
+            const container = document.getElementById('monthlyReportList');
+            container.innerHTML = '';
+            
+            if (appData.transactions.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#9ca3af; padding:20px;">هنوز داده‌ای برای گزارش ماهانه وجود ندارد.</div>';
+                return;
+            }
+
+            const monthlyData = {};
+            const sortedTransactions = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const sortedMonths = [];
+
+            sortedTransactions.forEach(t => {
+                const monthStr = getPersianMonth(t.date);
+                if (!monthlyData[monthStr]) {
+                    monthlyData[monthStr] = { income: 0, expense: 0 };
+                    sortedMonths.push(monthStr);
+                }
+                if (t.type === 'income') {
+                    monthlyData[monthStr].income += t.amount;
+                } else {
+                    monthlyData[monthStr].expense += t.amount;
+                }
+            });
+
+            sortedMonths.forEach(month => {
+                const data = monthlyData[month];
+                const net = data.income - data.expense;
+                
+                const div = document.createElement('div');
+                div.className = 'report-month-card';
+                div.innerHTML = `
+                    <div class="report-header">${month}</div>
+                    <div class="report-details">
+                        <div class="report-item income">
+                            <span>مجموع ورودی:</span>
+                            <span>${formatMoney(data.income)}</span>
+                        </div>
+                        <div class="report-item expense">
+                            <span>مجموع خروجی:</span>
+                            <span>${formatMoney(data.expense)}</span>
+                        </div>
+                        <div class="report-item net">
+                            <span>تراز خالص ماه:</span>
+                            <span style="color: ${net >= 0 ? 'var(--success)' : 'var(--danger)'}">${formatMoney(net)}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderTransactionHistory() {
+            const list = document.getElementById('transactionList');
+            list.innerHTML = '';
+            const sorted = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (sorted.length === 0) {
+                list.innerHTML = '<li style="text-align:center; color:#9ca3af; padding:20px;">هنوز تراکنشی ثبت نشده است.</li>';
+                return;
+            }
+
+            sorted.forEach(t => {
+                const accName = appData.accounts.find(a => a.id === t.accountId)?.name || 'حساب حذف شده';
+                const li = document.createElement('li');
+                li.className = 'transaction-item';
+                const isIncome = t.type === 'income';
+                
+                li.innerHTML = `
+                    <div class="t-info">
+                        <span class="t-title">${t.title}</span>
+                        <span class="t-meta">${t.category} | ${accName}</span>
+                        <span class="t-meta" style="color: var(--primary);">${getPersianDate(t.date)}</span>
+                    </div>
+                    <div class="t-amount ${isIncome ? 'income' : 'expense'}">
+                        ${isIncome ? '+' : '-'} ${formatMoney(t.amount)}
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function checkCustomCategory(select) {
+            const customInput = document.getElementById('customCategoryInput');
+            if (select.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+                customInput.value = '';
+            }
+        }
+
+        // --- منطق جدید برای فرمت کردن مبلغ هنگام تایپ ---
+        const amountInput = document.getElementById('tAmount');
+        amountInput.addEventListener('input', function(e) {
+            // حذف هر کاراکتری که عدد نیست (شامل کاماهای قبلی)
+            let rawValue = this.value.replace(/[^\d]/g, '');
+            // اضافه کردن کاما هر سه رقم
+            let formattedValue = rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            this.value = formattedValue;
+        });
+
+        function initiateTransaction(type) {
+            const title = document.getElementById('tTitle').value.trim();
+            
+            // حذف کاماها قبل از تبدیل به عدد برای محاسبات ریاضی
+            const rawAmountStr = document.getElementById('tAmount').value.replace(/,/g, '');
+            const amount = parseFloat(rawAmountStr);
+            
+            let category = document.getElementById('tCategory').value;
+            const customCat = document.getElementById('customCategoryInput').value.trim();
+
+            if (!title) return alert('لطفا عنوان تراکنش را وارد کنید.');
+            if (isNaN(amount) || amount <= 0) return alert('لطفا مبلغ معتبر وارد کنید.');
+            if (appData.accounts.length === 0) return alert('لطفا ابتدا حداقل یک حساب ایجاد کنید.');
+            
+            if (category === 'custom') {
+                if (!customCat) return alert('لطفا نام دسته‌بندی جدید را وارد کنید.');
+                category = customCat;
+                if (!appData.categories.includes(category)) {
+                    appData.categories.push(category);
+                }
+            }
+
+            pendingTransaction = { title, amount, category, type };
+            
+            const modalList = document.getElementById('modalAccountList');
+            modalList.innerHTML = '';
+            appData.accounts.forEach(acc => {
+                const div = document.createElement('div');
+                div.className = 'account-option';
+                div.innerText = acc.name;
+                div.onclick = () => confirmTransaction(acc.id);
+                modalList.appendChild(div);
+            });
+            
+            document.getElementById('accountSelectModal').classList.add('active');
+        }
+
+        function confirmTransaction(accountId) {
+            if (!pendingTransaction) return;
+            const { title, amount, category, type } = pendingTransaction;
+            const account = appData.accounts.find(a => a.id === accountId);
+            
+            if (type === 'income') {
+                account.balance += amount;
+            } else {
+                account.balance -= amount;
+            }
+
+            appData.transactions.push({
+                id: Date.now(),
+                accountId: accountId,
+                title,
+                amount,
+                category,
+                type,
+                date: new Date().toISOString()
+            });
+
+            document.getElementById('tTitle').value = '';
+            document.getElementById('tAmount').value = '';
+            document.getElementById('tCategory').value = 'درآمد';
+            document.getElementById('customCategoryInput').style.display = 'none';
+            document.getElementById('customCategoryInput').value = '';
+            pendingTransaction = null;
+
+            closeModal('accountSelectModal');
+            saveData();
+            alert('تراکنش با موفقیت ثبت شد ✅');
+        }
+
+        function openAddAccountModal() {
+            document.getElementById('newAccountName').value = '';
+            document.getElementById('addAccountModal').classList.add('active');
+        }
+
+        function addNewAccount() {
+            const name = document.getElementById('newAccountName').value.trim();
+            if (!name) return alert('لطفا نام حساب را وارد کنید.');
+            appData.accounts.push({ id: Date.now(), name: name, balance: 0 });
+            closeModal('addAccountModal');
+            saveData();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function exportToExcel() {
+            if (appData.transactions.length === 0) return alert('داده‌ای برای خروجی وجود ندارد.');
+
+            const excelData = appData.transactions.map(t => {
+                const acc = appData.accounts.find(a => a.id === t.accountId);
+                return {
+                    'تاریخ و روز': getPersianDate(t.date),
+                    'عنوان': t.title,
+                    'دسته‌بندی': t.category,
+                    'نام حساب': acc ? acc.name : 'حذف شده',
+                    'نوع': t.type === 'income' ? 'ورودی (درآمد)' : 'خروجی (هزینه)',
+                    'مبلغ (تومان)': t.amount
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "گزارش مالی");
+            if(!ws['!views']) ws['!views'] = [];
+            ws['!views'].push({ rightToLeft: true });
+
+            const fileName = `گزارش_مالی_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+
+        renderAll();
+    </script>
+</body>
+</html>
